@@ -437,7 +437,9 @@ call   qword ptr [rax + 0x68]        // calling  _IO_wide_data->_wide_vtable + 0
 ```
 
 
-Now we will set our `_IO_wide_data->vtable+0x68` to our favourite  pointer `0xdeadc0de`
+Now we will set our `_IO_wide_data->vtable+0x68` to our favourite  pointer `0xdeadc0de`  
+  
+  
 **STEPS OF EXPLOIT:**
 * Set `fp->_lock = libc.sym._IO_2_1_stdout_ +0x1000` to some writable area 
 * `fp->_IO_write_ptr = 1` to pass check `fp->_IO_write_ptr > fp->_IO_write_base` in [_IO_flush_all](https://elixir.bootlin.com/glibc/glibc-2.40.9000/source/libio/genops.c#L727)
