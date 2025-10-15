@@ -8,9 +8,12 @@ I would start from the exit() function , because this is the best way to exploit
 In this writeup i followed these binary files taken from `Securinets CTF` ,:
 Challenge file : [chall](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/chall) #I modified this binary to make it easy to follow  
 
-libc (non-stripped) : [libc](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/libc.so.6)
-linker:[ld](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/ld-linux-x86-64.so.2)
-detailed exploit:[exploit](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/solve.py)
+libc (non-stripped) : [libc](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/libc.so.6)  
+
+linker:[ld](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/ld-linux-x86-64.so.2)  
+
+detailed exploit:[exploit](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/solve.py) 
+
 
 
 _Start:
