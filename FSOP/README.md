@@ -1,3 +1,19 @@
+# Introduction
+
+I'M going to explain you the  File Stream Oriented Programming `FSOP` exploitation in very beginner friendly way , at least i would try.
+The motivation for this writeup is due to  those friends , who knows very much  basic ROP , But afraid of this topic because they think File struct is just an Advance Exploitation and require more details to learn about File Structure of C And mostly they are confused in how FSOP work.
+So i am going to explain those low-level details in very raw format . My main focus would be always on the reason of why this is happening rather than what would happen ./?
+I would start from the exit() function , because this is the best way to exploit if no other printf, scanf, etc. function is unavailable..
+
+In this writeup i followed these binary files taken from `Securinets CTF` ,:
+Challenge file : [chall](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/chall) #I modified this binary to make it easy to follow
+libc (non-stripped) : [libc](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/libc.so.6)
+linker:[ld](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/ld-linux-x86-64.so.2)
+detailed exploit:[exploit](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/solve.py)
+
+
+_Start:
+---
 ```C
 void
 exit (int status)
@@ -44,7 +60,7 @@ Full exit.c code : [exit.c](https://elixir.bootlin.com/glibc/glibc-2.40.9000/sou
  `_IO_cleanup() purpose:`
 * This function is part of glibc’s internal I/O system (libio).
 * It is called at program termination (via exit() or similar paths) to:
-* lush all open standard I/O streams (stdout, stderr, file streams, etc.)
+* flush all open standard I/O streams (stdout, stderr, file streams, etc.)
 * Make sure any buffered data is written to files.
 * Switch streams to unbuffered mode afterward.
 
@@ -388,11 +404,53 @@ _IO_doallocbuf (FILE *fp)
   if (fp->_IO_buf_base) // checks if buff is already allocated
     return;
   if (!(fp->_flags & _IO_UNBUFFERED) || fp->_mode > 0) //This checks whether the stream is buffered. If the _IO_UNBUFFERED flag is not set, the stream is intended to use a buffer and therefore we should try to allocate one
-    if (_IO_DOALLOCATE (fp) != EOF)
+    if (_IO_DOALLOCATE (fp) != EOF) // it is responsible for  actual work of allocating and installing a buffer for a FILE *
       return;
-  _IO_setb (fp, fp->_shortbuf, fp->_shortbuf+1, 0); //if need to allocate buff. [Target function]
+  _IO_setb (fp, fp->_shortbuf, fp->_shortbuf+1, 0);
 }
 ```
+
+We will now focus on `_IO_DOALLOCATE`  :
+* It is implemented as macros `#define _IO_WDOALLOCATE(FP) WJUMP0 (__doallocate, FP)`in [libioP.h](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/libioP.h#L225) same as we discussed `JUMP1` above.
+* `#define WJUMP0(FUNC, THIS) (_IO_WIDE_JUMPS_FUNC(THIS)->FUNC) (THIS)` 
+* `#define _IO_WIDE_JUMPS_FUNC(THIS) _IO_WIDE_JUMPS(THIS)`
+```C
+#define _IO_WIDE_JUMPS(THIS) \
+  _IO_CAST_FIELD_ACCESS ((THIS), struct _IO_FILE, _wide_data)->_wide_vtable
+```
+From the above points , we can conclude that how we are using `_wide_data->_wide_vtable` pointer same as `fp->vtable` to call the required function form the list of vtable.
+But this time our `_wide_data` struct will be pointing to the our forged File struct to controll the call function 
+> Note : This time we will be able to call arbitrary functions due to no check for valid vtable.
+
+In disassembly of `_IO_wdoallocbuf` we are calling as 
+![_IO_wdoallocbuf](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/do_alloc.png)
+```C 
+rdi = _IO_2_1_stdout struct pointer
+mov    rax, qword ptr [rdi + 0xa0]   // move rax = _IO_wide_data struct pointer
+   ...
+mov    rax, qword ptr [rax + 0xe0]   // move rax = _IO_wide_data->_wide_vtable (In our case it is pointing to our File Struct)
+call   qword ptr [rax + 0x68]        // calling  _IO_wide_data->_wide_vtable + 0x68 
+```
+
+
+Now we will set our `_IO_wide_data->vtable+0x68` to our favourite  pointer `0xdeadc0de`
+**STEPS OF EXPLOIT:**
+* Set `fp->_lock = libc.sym._IO_2_1_stdout_ +0x1000` to some writable area 
+* `fp->_IO_write_ptr = 1` to pass check `fp->_IO_write_ptr > fp->_IO_write_base` in [_IO_flush_all](https://elixir.bootlin.com/glibc/glibc-2.40.9000/source/libio/genops.c#L727)
+* Need to point to fake vtable which uses `_wide_data` to vulnerable call . `fp->vtable = libc.sym._IO_wfile_jumps` 
+* Set our `_IO_wide_data` = `_IO_2_1_stdout +0x8` in our File struct to set fake `_IO_wide_data` pointer looks like `_IO_FILE`
+* Now `_IO_wide_data->_wide_vtable+0x68` will be at offset of `_chain` of our `fp` pointer , so set `fp->_chain` = `0xdeadc0de`
+* Again these offset depend upon the libc version. , you need to work on gdb to figure out how these offset are are calling which function and where.
+
+
+
+**Finally we controlled our program counter!!** [0xdeadc0de.png](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/0xdeadc0de.png).
+
+***Thanks for Reading!!***
+
+
+
+
 
 
 
