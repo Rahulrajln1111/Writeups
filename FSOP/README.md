@@ -316,19 +316,83 @@ Moving to next journey.. 📈
 Till now we reached upto `call [vtable+0x18]` , if you observer in `vtable` it is `__overflow` at offset `0x18`
 This is the core function glibc uses for flushing/writing to a file when the buffer is full. 
 
-**Purpose:**
+* [_IO_new_file_overflow()](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/fileops.c#L765) offset:0x18
 1. _IO_file_overflow() handles overflow in a FILE stream’s buffer.
    * In `C`, when we write to a `FILE *` stream `(fputc, fwrite, fprintf, etc.)`, the data usually goes to a buffer in memory first.
    * The buffer is `flushed` (written to the underlying file descriptor or `_filno`) when it’s full or when you call `fflush()`.
 
-Code:[_IO_new_file_overflow()](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/fileops.c#L765)
+
 
 But now our main focus is on, **What if we are able to write this `vtable` pointer ??**
-Challenges :
-* How to write ?
-* Could something stop from writing?
+>I have added challenge file which will allow us to take input directly to file pointer
 
+In this challenge we are able to take input uputo `0xff bytes` , to overwrite file struct 
+Now , think what can we over-write  to vtable pinter ??
+If we remember , while Jumping to `_IO_OVERFLOW(FP, CH)` we have to pass throug a vtable check [`IO_validate_vtable(vtable)`](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/libioP.h#L1033)
+```C
+IO_validate_vtable (const struct _IO_jump_t *vtable)
+{
+  uintptr_t ptr = (uintptr_t) vtable;
+  uintptr_t offset = ptr - (uintptr_t) &__io_vtables; // in above case we were at offset 0x18 to call __Overflow
+  if (__glibc_unlikely (offset >= IO_VTABLES_LEN)) // IO_VTABLE_LEN = sizeof(struct _IO_jump_t)
+    _IO_vtable_check (); //cause error if failed to check
+  return vtable; 
+}
+```
+Inside `_IO_validate_vtable` it checks for our offset of `vtable` functions , it cannot allow us to call those functions which are not inside  `_IO_jump_t` struct i.e. our pointer `*vtable`.
 
+>It looks like we stuck here ?
+
+So we need to pass a valid `vtable` pointer which can call some vulnerable function whose calling function can be controlled by our forged file struct.
+There is a separate type `vtable` for wide char flush operation that uses our [wide_data struct](https://elixir.bootlin.com/glibc/glibc-2.42/source/libio/libio.h#L121)  (we already have a small discussion on this ) entry of our forged file pointer.
+This special `vtable` for wide char is `_IO_wfile_jump` , its pointer lies in [`__io_vtable`](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/libioP.h#L519) so we can use this to call the function related to wide char operations.
+
+After over-writing our vtable with `_IO_wfile_jump`  our `call [vtable+0x18]` will now call `_IO_wfile_overflow` to manage wide char instead of `__overflow` for normal bytes.
+
+Now look inside [_IO_wfile_overflow](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/wfileops.c#L407)
+```C
+wint_t
+_IO_wfile_overflow (FILE *f, wint_t wch)
+{
+  if (f->_flags & _IO_NO_WRITES) /* SET ERROR */
+    {
+      f->_flags |= _IO_ERR_SEEN;
+      __set_errno (EBADF);
+      return WEOF;
+    }
+  /* If currently reading or no buffer allocated. */
+  if ((f->_flags & _IO_CURRENTLY_PUTTING) == 0
+      || f->_wide_data->_IO_write_base == NULL)
+    {
+      /* Allocate a buffer if needed. */
+      if (f->_wide_data->_IO_write_base == NULL) 
+  {
+    _IO_wdoallocbuf (f); // This is now our target function to call
+    _IO_free_wbackup_area (f);
+
+    if (f->_IO_write_base == NULL)
+      {
+        _IO_doallocbuf (f);
+        _IO_setg (f, f->_IO_buf_base, f->_IO_buf_base, f->_IO_buf_base);
+      }
+    _IO_wsetg (f, f->_wide_data->_IO_buf_base,
+         f->_wide_data->_IO_buf_base, f->_wide_data->_IO_buf_base);
+  }
+  ...
+```
+
+`_IO_wdoallocbuf()` ensure the `FILE` stream f has an appropriate buffer for wide-character operations (wchar/wide I/O).
+```C
+_IO_doallocbuf (FILE *fp)
+{
+  if (fp->_IO_buf_base) // checks if buff is already allocated
+    return;
+  if (!(fp->_flags & _IO_UNBUFFERED) || fp->_mode > 0) //This checks whether the stream is buffered. If the _IO_UNBUFFERED flag is not set, the stream is intended to use a buffer and therefore we should try to allocate one
+    if (_IO_DOALLOCATE (fp) != EOF)
+      return;
+  _IO_setb (fp, fp->_shortbuf, fp->_shortbuf+1, 0); //if need to allocate buff. [Target function]
+}
+```
 
 
 
