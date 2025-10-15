@@ -1,7 +1,7 @@
 # Introduction
 
 I'M going to explain you the  File Stream Oriented Programming `FSOP` exploitation in very beginner friendly way , at least i would try.
-The motivation for this writeup is due to  those friends , who knows very much  basic ROP , But afraid of this topic because they think File struct is just an Advance Exploitation and require more details to learn about File Structure of C And mostly they are confused in how FSOP work.
+The motivation for this writeup is due to those friends , who knows very much basic ROP , But afraid of this topic because they think File struct is just an Advance Exploitation and require more details to learn about File Structure of C And mostly they are confused in how FSOP work.
 So i am going to explain those low-level details in very raw format . My main focus would be always on the reason of why this is happening rather than what would happen ./?
 I would start from the exit() function , because this is the best way to exploit if no other printf, scanf, etc. function is unavailable..
 
@@ -439,7 +439,7 @@ call   qword ptr [rax + 0x68]        // calling  _IO_wide_data->_wide_vtable + 0
 
 Now we will set our `_IO_wide_data->vtable+0x68` to our favourite  pointer `0xdeadc0de`  
   
-  
+
 **STEPS OF EXPLOIT:**
 * Set `fp->_lock = libc.sym._IO_2_1_stdout_ +0x1000` to some writable area 
 * `fp->_IO_write_ptr = 1` to pass check `fp->_IO_write_ptr > fp->_IO_write_base` in [_IO_flush_all](https://elixir.bootlin.com/glibc/glibc-2.40.9000/source/libio/genops.c#L727)
