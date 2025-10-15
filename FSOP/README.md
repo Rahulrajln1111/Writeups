@@ -448,7 +448,7 @@ Now we will set our `_IO_wide_data->vtable+0x68` to our favourite  pointer `0xde
 
 
 
-**Finally we controlled our program counter!!** [0xdeadc0de.png](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/0xdeadc0de.png).
+**Finally we controlled our program counter!!** ![0xdeadc0de.png](https://github.com/Rahulrajln1111/Writeups/blob/main/FSOP/0xdeadc0de.png).
 
 ***Thanks for Reading!!***
 
