@@ -309,7 +309,7 @@ Code:[_IO_flush_all](https://elixir.bootlin.com/glibc/glibc-2.40.9000/source/lib
 ## 4. _IO_OVERFLOW (fp, EOF)
 ---
 
-In [libioP.h](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/libioP.h#L148) , It defined as micros `#define _IO_OVERFLOW(FP, CH) JUMP1 (__overflow, FP, CH)`  and for `JUMP1` defined as
+In [libioP.h](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/libioP.h#L148) , It defined as macros `#define _IO_OVERFLOW(FP, CH) JUMP1 (__overflow, FP, CH)`  and for `JUMP1` defined as
 `#define JUMP1(FUNC, THIS, X1) (_IO_JUMPS_FUNC(THIS)->FUNC) (THIS, X1)`
 Now we need to understand `_IO_JUMPS_FUNC(THIS)`  
 It is again defined as micro in  [libioP.h](https://elixir.bootlin.com/glibc/glibc-2.42.9000/source/libio/libioP.h#L109) as :
